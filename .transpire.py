@@ -1,5 +1,5 @@
-from transpire import utils, helm
-from transpire.resources import Deployment, Ingress, Secret
+from transpire import utils, helm, surgery
+from transpire.resources import Deployment, Ingress, Secret, Service
 
 name = "outline"
 namespace = name
@@ -15,7 +15,7 @@ def objects():
     yield Ingress.simple(
         host="docs.ocf.berkeley.edu",
         service_name=f"{name}-web",
-        service_port=80,
+        service_port=8080,
     )
 
     # This returns a Kubernetes secret object, which actually contains secret
@@ -56,7 +56,7 @@ def objects():
             "ENABLE_UPDATES": "true",
             "FORCE_HTTPS": "true",
             "PGSSLMODE": "require",
-            "PORT": "80",
+            "PORT": "8080",
             "SLACK_MESSAGE_ACTIONS": "true",
             "URL": "https://docs.ocf.berkeley.edu",
             "OIDC_CLIENT_ID": "outline",
@@ -76,19 +76,22 @@ def objects():
         command=[
             "sh",
             "-c",
-            "yarn ",
-            "sequelize:migrate ",
-            "--env ",
-            "production-ssl-disabled ",
-            "&& yarn start",
+            "yarn sequelize:migrate && yarn start",
         ],
-        ports=[80],
+        ports=[8080],
         configs_env=[name],
         secrets_env=[name],
     )
 
+    yield Service.simple(
+        name="outline-web",
+        selector={"app": name},
+        port_on_pod=8080,
+        port_on_svc=8080,
+    )
+
     # This deploys everything you need to run redis! That was easy.
-    yield from helm.build_chart_from_versions(
+    redis_chart = helm.build_chart_from_versions(
         name="redis",
         versions=versions,
         # <https://github.com/bitnami/charts/tree/main/bitnami/redis>
@@ -98,3 +101,11 @@ def objects():
             "auth": {"password": ""},
         },
     )
+
+    yield from surgery.edit_manifests({
+        # Chop off the automatically generated checksums.
+        ("StatefulSet", "redis-master"): surgery.make_edit_manifest({
+            ("spec", "template", "metadata", "annotations"): {},
+        })
+    }, list(redis_chart))
+
