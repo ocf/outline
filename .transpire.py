@@ -7,6 +7,7 @@ namespace = name
 versions = utils.get_versions(__file__)
 image = f"docker.io/outlinewiki/outline:{versions[name]['version']}"
 
+
 def objects():
     # Create an Ingress (a piece of standard configuration for web proxies).
     # This will configure the Envoy listening at 169.229.226.81 to forward
@@ -48,21 +49,22 @@ def objects():
             "AWS_REGION": "default",
             "AWS_S3_ACL": "private",
             "AWS_S3_FORCE_PATH_STYLE": "true",
-            "AWS_S3_UPLOAD_BUCKET_NAME": "outline",
-            # TODO: Configure a global object storage gateway.
-            "AWS_S3_UPLOAD_BUCKET_URL": "http://localhost:9000",
+            "AWS_S3_UPLOAD_BUCKET_NAME": "ocf-outline",
+            "AWS_S3_UPLOAD_BUCKET_URL": "https://o3.ocf.io",
             "AWS_S3_UPLOAD_MAX_SIZE": "26214400",
             "DEFAULT_LANGUAGE": "en_US",
             "ENABLE_UPDATES": "true",
             "FORCE_HTTPS": "true",
-            "PGSSLMODE": "disable",
+            "PGSSLMODE": "require",
             "PORT": "80",
             "SLACK_MESSAGE_ACTIONS": "true",
             "URL": "https://docs.ocf.berkeley.edu",
             "OIDC_CLIENT_ID": "outline",
-            "OIDC_TOKEN_URI": "https://auth.ocf.berkeley.edu/auth/realms/ocf",
-            "OIDC_DISPLAY_NAME": "Sign in with OCF"
-        }
+            "OIDC_AUTH_URI": "https://auth.ocf.berkeley.edu/auth/realms/ocf/auth",
+            "OIDC_TOKEN_URI": "https://auth.ocf.berkeley.edu/auth/realms/ocf/token",
+            "OIDC_USERINFO_URI": "https://auth.ocf.berkeley.edu/auth/realms/ocf/userinfo",
+            "OIDC_DISPLAY_NAME": "Sign in with OCF",
+        },
     }
 
     # This will create a container, and watch it if it dies to continually
@@ -71,25 +73,28 @@ def objects():
     yield Deployment.simple(
         name=name,
         image=image,
-        command=["sh", "-c", "yarn ", "sequelize:migrate ", "--env ", "production-ssl-disabled ", "&& yarn start"],
+        command=[
+            "sh",
+            "-c",
+            "yarn ",
+            "sequelize:migrate ",
+            "--env ",
+            "production-ssl-disabled ",
+            "&& yarn start",
+        ],
         ports=[80],
         configs_env=[name],
         secrets_env=[name],
     )
 
-    # This deploys everything you need to run postgres! That was easy.
-    # TODO: Put configuration in the values={} dict.
-    yield helm.build_chart_from_versions(
-        name="postgresql",
-        versions=versions,
-        # <https://github.com/bitnami/charts/tree/main/bitnami/postgresql>
-        values={},
-    )
-
-    yield helm.build_chart_from_versions(
+    # This deploys everything you need to run redis! That was easy.
+    yield from helm.build_chart_from_versions(
         name="redis",
         versions=versions,
         # <https://github.com/bitnami/charts/tree/main/bitnami/redis>
-        values={},
+        values={
+            "architecture": "standalone",
+            # This will emit a VaultSecret in production!
+            "auth": {"password": ""},
+        },
     )
-
