@@ -117,7 +117,7 @@ def objects():
                         "metadata",
                         "annotations",
                         "checksum/secret",
-                    ): {},
+                    ): None,
                 }
             )
         },
