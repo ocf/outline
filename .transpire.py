@@ -15,7 +15,7 @@ def objects():
     yield Ingress.simple(
         host="docs.ocf.berkeley.edu",
         service_name=f"{name}-web",
-        service_port=8080,
+        service_port=80,
     )
 
     # This returns a Kubernetes secret object, which actually contains secret
@@ -60,10 +60,10 @@ def objects():
             "SLACK_MESSAGE_ACTIONS": "true",
             "URL": "https://docs.ocf.berkeley.edu",
             "OIDC_CLIENT_ID": "outline",
-            "OIDC_AUTH_URI": "https://auth.ocf.berkeley.edu/auth/realms/ocf/auth",
-            "OIDC_TOKEN_URI": "https://auth.ocf.berkeley.edu/auth/realms/ocf/token",
-            "OIDC_USERINFO_URI": "https://auth.ocf.berkeley.edu/auth/realms/ocf/userinfo",
-            "OIDC_DISPLAY_NAME": "Sign in with OCF",
+            "OIDC_AUTH_URI": "https://auth.ocf.berkeley.edu/auth/realms/ocf/protocol/openid-connect/auth",
+            "OIDC_TOKEN_URI": "https://auth.ocf.berkeley.edu/auth/realms/ocf/protocol/openid-connect/token",
+            "OIDC_USERINFO_URI": "https://auth.ocf.berkeley.edu/auth/realms/ocf/protocol/openid-connect/userinfo",
+            "OIDC_DISPLAY_NAME": "OCF Auth",
         },
     }
 
@@ -84,10 +84,10 @@ def objects():
     )
 
     yield Service.simple(
-        name="outline-web",
+        name=f"{name}-web",
         selector={"app": name},
         port_on_pod=8080,
-        port_on_svc=8080,
+        port_on_svc=80,
     )
 
     # This deploys everything you need to run redis! That was easy.
@@ -102,10 +102,24 @@ def objects():
         },
     )
 
-    yield from surgery.edit_manifests({
-        # Chop off the automatically generated checksums.
-        ("StatefulSet", "redis-master"): surgery.make_edit_manifest({
-            ("spec", "template", "metadata", "annotations"): {},
-        })
-    }, list(redis_chart))
-
+    yield from surgery.edit_manifests(
+        {
+            # Chop off the automatically generated checksum for the secret only.
+            # The checksums exist to ensure that Redis is restarted when its
+            # configuration changes. However, the Helm chart randomly generates
+            # a new password each run, even though the real secret in Vault
+            # isn't changing, so we ignore only the secret checksum.
+            ("StatefulSet", "redis-master"): surgery.make_edit_manifest(
+                {
+                    (
+                        "spec",
+                        "template",
+                        "metadata",
+                        "annotations",
+                        "checksum/secret",
+                    ): {},
+                }
+            )
+        },
+        redis_chart,
+    )
