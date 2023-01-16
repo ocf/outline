@@ -46,7 +46,7 @@ def objects():
         "kind": "ConfigMap",
         "metadata": {"name": name},
         "data": {
-            "AWS_REGION": "default",
+            "AWS_REGION": "rgw-hdd",
             "AWS_S3_ACL": "private",
             "AWS_S3_FORCE_PATH_STYLE": "true",
             "AWS_S3_UPLOAD_BUCKET_NAME": "ocf-outline",
