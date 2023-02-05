@@ -1,4 +1,5 @@
-from transpire import utils, helm, surgery
+import pyjq
+from transpire import helm, surgery, utils
 from transpire.resources import Deployment, Ingress, Secret, Service
 
 name = "outline"
@@ -7,23 +8,36 @@ namespace = name
 versions = utils.get_versions(__file__)
 image = f"docker.io/outlinewiki/outline:{versions[name]['version']}"
 
+# I had to use awscli to fix the CORS rules to make Outline work...
+# aws --profile=ceph --endpoint=https://o3.ocf.io s3api get-bucket-cors --bucket ocf-outline
+# {
+#   "CORSRules": [
+#     {
+#       "AllowedHeaders": ["*"],
+#       "AllowedMethods": ["PUT", "POST", "GET", "DELETE"],
+#       "AllowedOrigins": ["https://docs.ocf.berkeley.edu"],
+#       "MaxAgeSeconds": 3000
+#     }
+#   ]
+# }
+
 
 def objects():
     # Create an Ingress (a piece of standard configuration for web proxies).
     # This will configure the Envoy listening at 169.229.226.81 to forward
     # docs.ocf.berkeley.edu to the Service called "outline-web" on port 80.
-    yield Ingress.simple(
+    yield Ingress(
         host="docs.ocf.berkeley.edu",
         service_name=f"{name}-web",
         service_port=80,
-    )
+    ).build()
 
     # This returns a Kubernetes secret object, which actually contains secret
     # data! Not to worry though, in production, transpire will intercept these
     # and deploy a VaultSecret. You can use this to generate default values
     # randomly, if possible. That makes your transpire module usable by others,
     # and slightly speeds up bootstrapping.
-    yield Secret.simple(
+    yield Secret(
         name=name,
         # If you can automatically generate these, do so here.
         # Then you can just `transpire secret push` these to Vault!
@@ -37,7 +51,7 @@ def objects():
             "DATABASE_URL": "",
             "REDIS_URL": "",
         },
-    )
+    ).build()
 
     # Configuration details for outline-- notice how these are injected
     # as environment variables into the Deployment!
@@ -68,27 +82,22 @@ def objects():
     }
 
     # This will create a container, and watch it if it dies to continually
-    # restart it. Here we use a custom command, but we should probably build off
-    # the Dockerfile and override it instead of doing this.
-    yield Deployment.simple(
-        name=name,
-        image=image,
-        command=[
-            "sh",
-            "-c",
-            "yarn sequelize:migrate && yarn start",
-        ],
-        ports=[8080],
-        configs_env=[name],
-        secrets_env=[name],
-    )
+    # restart it. Here we use a custom command, via the .patch() functionality.
+    yield Deployment(name=name, image=image, ports=[8080],).with_configmap_env(
+        name
+    ).with_secrets_env(name).patch(
+        lambda x: pyjq.one(
+            '.spec.containers[0].command = ["sh", "-c", "yarn sequelize:migrate && yarn start"]',
+            x,
+        )
+    ).build()
 
-    yield Service.simple(
-        name=f"{name}-web",
+    yield Service(
+        name="outline-web",
         selector={"app": name},
         port_on_pod=8080,
         port_on_svc=80,
-    )
+    ).build()
 
     # This deploys everything you need to run redis! That was easy.
     redis_chart = helm.build_chart_from_versions(
