@@ -1,4 +1,3 @@
-import pyjq
 from transpire import helm, surgery, utils
 from transpire.resources import Deployment, Ingress, Secret, Service
 
@@ -83,14 +82,19 @@ def objects():
 
     # This will create a container, and watch it if it dies to continually
     # restart it. Here we use a custom command, via the .patch() functionality.
-    yield Deployment(name=name, image=image, ports=[8080],).with_configmap_env(
-        name
-    ).with_secrets_env(name).patch(
-        lambda x: pyjq.one(
-            '.spec.containers[0].command = ["sh", "-c", "yarn sequelize:migrate && yarn start"]',
-            x,
-        )
-    ).build()
+    yield surgery.shelve(
+        obj=(
+            Deployment(
+                name=name,
+                image=image,
+                ports=[8080],
+            )
+            .with_configmap_env(name)
+            .build()
+        ),
+        path=("spec", "template", "spec", "containers", 0, "command"),
+        val=["sh", "-c", "yarn sequelize:migrate && yarn start"],
+    )
 
     yield Service(
         name="outline-web",
