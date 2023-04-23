@@ -82,23 +82,25 @@ def objects():
 
     # This will create a container, and watch it if it dies to continually
     # restart it. Here we use a custom command, via the .patch() functionality.
-    yield surgery.shelve(
-        obj=(
-            Deployment(
-                name=name,
-                image=image,
-                ports=[8080],
-            )
-            .with_configmap_env(name)
-            .build()
-        ),
-        path=("spec", "template", "spec", "containers", 0, "command"),
-        val=["sh", "-c", "yarn sequelize:migrate && yarn start"],
-    )
+    yield Deployment(
+        name=name,
+        image=image,
+        ports=[8080],
+    ).with_configmap_env(name).patch(
+        surgery.make_edit_manifest(
+            {
+                ("spec", "template", "spec", "containers", 0, "command"): [
+                    "sh",
+                    "-c",
+                    "yarn db:migrate && yarn start",
+                ]
+            }
+        )
+    ).build()
 
     yield Service(
         name="outline-web",
-        selector={"app": name},
+        selector={Deployment.SELECTOR_LABEL: name},
         port_on_pod=8080,
         port_on_svc=80,
     ).build()

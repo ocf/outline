@@ -1,5 +1,5 @@
 [outline]
-version = "0.67.2"
+version = "0.68.1"
 github = "https://github.com/outline/outline"
 
 [postgresql]
