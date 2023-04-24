@@ -1,0 +1,12 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  transpire-ci:
+    uses: ocf/transpire-ci/.github/workflows/trigger.yml@master
+    secrets:
+      TRANSPIRE_CI_PAT: ${{ secrets.TRANSPIRE_CI_PAT }}
