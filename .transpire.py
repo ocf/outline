@@ -82,11 +82,15 @@ def objects():
 
     # This will create a container, and watch it if it dies to continually
     # restart it. Here we use a custom command, via the .patch() functionality.
-    yield Deployment(
-        name=name,
-        image=image,
-        ports=[8080],
-    ).with_configmap_env(name).patch(
+    yield (
+        Deployment(
+            name=name,
+            image=image,
+            ports=[8080],
+        )
+        .with_configmap_env(name)
+        .with_secrets_env(name)
+    ).patch(
         surgery.make_edit_manifest(
             {
                 ("spec", "template", "spec", "containers", 0, "command"): [
