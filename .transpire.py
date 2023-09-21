@@ -124,6 +124,13 @@ def objects():
         },
     )
 
+    yield Secret(
+        name="redis",
+        string_data={
+            "redis-password": "",
+        },
+    ).build()
+
     yield from surgery.edit_manifests(
         {
             # Chop off the automatically generated checksum for the secret only.
