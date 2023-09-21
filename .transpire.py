@@ -117,7 +117,10 @@ def objects():
         values={
             "architecture": "standalone",
             # This will emit a VaultSecret in production!
-            "auth": {"password": ""},
+            "auth": {
+                "existingSecret": "redis",
+                "existingSecretPasswordKey": "redis-password",
+            },
         },
     )
 
