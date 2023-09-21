@@ -73,10 +73,10 @@ def objects():
             "SLACK_MESSAGE_ACTIONS": "true",
             "URL": "https://docs.ocf.berkeley.edu",
             "OIDC_CLIENT_ID": "outline",
-            "OIDC_AUTH_URI": "https://auth.ocf.berkeley.edu/auth/realms/ocf/protocol/openid-connect/auth",
-            "OIDC_TOKEN_URI": "https://auth.ocf.berkeley.edu/auth/realms/ocf/protocol/openid-connect/token",
-            "OIDC_USERINFO_URI": "https://auth.ocf.berkeley.edu/auth/realms/ocf/protocol/openid-connect/userinfo",
-            "OIDC_DISPLAY_NAME": "OCF Auth",
+            "OIDC_AUTH_URI": "https://idm.ocf.berkeley.edu/realms/ocf/protocol/openid-connect/auth",
+            "OIDC_TOKEN_URI": "https://idm.ocf.berkeley.edu/realms/ocf/protocol/openid-connect/token",
+            "OIDC_USERINFO_URI": "https://idm.ocf.berkeley.edu/realms/ocf/protocol/openid-connect/userinfo",
+            "OIDC_DISPLAY_NAME": "OCF",
         },
     }
 
