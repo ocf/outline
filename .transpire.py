@@ -82,14 +82,10 @@ def objects():
 
     # This will create a container, and watch it if it dies to continually
     # restart it. Here we use a custom command, via the .patch() functionality.
-    yield (
-        Deployment(
-            name=name,
-            image=image,
-            ports=[8080],
-        )
-        .with_configmap_env(name)
-        .with_secrets_env(name)
+    deploy_outline = Deployment(
+        name=name,
+        image=image,
+        ports=[8080],
     ).patch(
         surgery.make_edit_manifest(
             {
@@ -100,11 +96,13 @@ def objects():
                 ]
             }
         )
-    ).build()
+    )
+    deploy_outline.pod_spec().with_configmap_env(name).with_secret_env(name)
+    yield deploy_outline.build()
 
     yield Service(
         name="outline-web",
-        selector={Deployment.SELECTOR_LABEL: name},
+        selector=deploy_outline.get_selector(),
         port_on_pod=8080,
         port_on_svc=80,
     ).build()
