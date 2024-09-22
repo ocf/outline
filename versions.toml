@@ -1,13 +1,13 @@
 [outline]
-version = "0.71.0"
+version = "0.80.0"
 github = "https://github.com/outline/outline"
 
 [postgresql]
-version = "12.1.6"
+version = "15.5.32"
 helm = "https://charts.bitnami.com/bitnami"
 chart = "postgresql"
 
 [redis]
-version = "17.4.0"
+version = "20.1.4"
 helm = "https://charts.bitnami.com/bitnami"
 chart = "redis"
